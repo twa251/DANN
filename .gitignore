@@ -1,7 +1,7 @@
 .DS_Store
 */.DS_Store
 */*/.DS_Store
-__pycaches__
+__pycache__
 *.o
 data
 dann_office/*
