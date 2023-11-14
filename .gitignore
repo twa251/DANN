@@ -1,0 +1,7 @@
+.DS_Store
+*/.DS_Store
+*/*/.DS_Store
+__pycaches__
+*.o
+data
+dann_office/*
