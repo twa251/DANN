@@ -10,5 +10,5 @@
 #SBATCH --mail-user=zeya.wang@uky.edu 
 #SBATCH --mail-type=ALL
 
-python3 /home/zwa281/DANN/dann_office.py --source amazon --target webcam --lr 0.01 -beta 0.1
+python3 /home/zwa281/DANN/dann_office.py --source amazon --target webcam --lr 0.01 --beta 0.1
 
