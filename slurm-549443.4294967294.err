@@ -1,6 +1,0 @@
-usage: conda [-h] [-v] [--no-plugins] [-V] COMMAND ...
-conda: error: argument COMMAND: invalid choice: 'activate' (choose from 'clean', 'compare', 'config', 'create', 'info', 'init', 'install', 'list', 'notices', 'package', 'remove', 'uninstall', 'rename', 'run', 'search', 'update', 'upgrade', 'content-trust', 'doctor', 'repoquery', 'env')
-Traceback (most recent call last):
-  File "/home/zwa281/DANN/dann_office.py", line 5, in <module>
-    import torch
-ModuleNotFoundError: No module named 'torch'

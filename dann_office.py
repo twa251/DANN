@@ -199,14 +199,24 @@ def main():
         mean_cls_loss = cls_loss_v / len_dataloader
 
         ## evaluation the acc for target domain
+        features_est = []
+        labels_est1, labels_est = [],[]
         for inputs, labels in target_loader_test:
             inputs, labels = inputs.to(device), labels.to(device)
             model.eval()
-            preds, _ = model(inputs)            
+            preds, features = model(inputs)            
+            labels_est1.append(preds.cpu().numpy())
             preds = torch.max(preds, 1)[1]
             correct += torch.sum(preds == labels.data)
+            features_est.append(features.cpu().numpy())
+            labels_est.append(preds.cpu().numpy())
         target_acc = correct.double() / len(target_loader.dataset)
         target_acc = target_acc.cpu().numpy()
+
+        features_est = np.concatenate(features_est,axis=0)
+        labels_est = np.concatenate(labels_est,axis=0)
+        labels_est1 = np.concatenate(labels_est1,axis=0)
+
         #print(target_acc)
         if target_acc > best_target_acc:
             best_target_acc = target_acc
@@ -220,6 +230,7 @@ def main():
                     os.makedirs('dann_office/{}_{}/{}_{}_{}'.format(args.source, args.target, args.decay, args.lr, args.beta))                
                 torch.save({'epoch': epoch + 1, 'model_state_dict': model.state_dict(), 'disc_model_state_dict': disc_model.state_dict(),
                     'optimizer' : optimizer.state_dict()}, 'dann_office/{}_{}/{}_{}_{}/'.format(args.source, args.target, args.decay, args.lr, args.beta) + timestampLaunch + '_' + str(epoch) + '_' + str(round(best_target_acc.item(),3)) + '.pth.tar')
+                np.savez('dann_office/{}_{}/{}_{}_{}/'.format(args.source, args.target, args.decay, args.lr, args.beta) + timestampLaunch + '_' + str(epoch) + '_' + str(round(best_target_acc.item(),3)) + '.npz', features_est, labels_est, labels_est1)
         if epoch == args.epochs:
             print('save the last epoch model')
             timestampTime = time.strftime("%H%M%S")
@@ -231,7 +242,8 @@ def main():
                 os.makedirs('dann_office/{}_{}/{}_{}_{}'.format(args.source, args.target, args.decay, args.lr, args.beta))                
             torch.save({'epoch': epoch + 1, 'model_state_dict': model.state_dict(), 'disc_model_state_dict': disc_model.state_dict(),
                 'optimizer' : optimizer.state_dict()}, 'dann_office/{}_{}/{}_{}_{}/'.format(args.source, args.target, args.decay, args.lr, args.beta) + timestampLaunch + '_' + str(epoch) + '_' + str(round(target_acc.item(),3)) + '.pth.tar')
-            
+            np.savez('dann_office/{}_{}/{}_{}_{}/'.format(args.source, args.target, args.decay, args.lr, args.beta) + timestampLaunch + '_' + str(epoch) + '_' + str(round(target_acc.item(),3)) + '.npz', features_est, labels_est, labels_est1)
+
 
         tqdm.write(f'EPOCH {epoch:03d}: test_acc={target_acc:.4f}, disc_loss={mean_disc_loss:.4f}, cls_loss={mean_cls_loss:.4f}, disc_acc={disc_accuracy:.4f}')
 
