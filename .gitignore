@@ -3,5 +3,7 @@
 */*/.DS_Store
 __pycache__
 *.o
-data
+data/*
 dann_office/*
+*.out
+*.err

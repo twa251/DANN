@@ -1,0 +1,6 @@
+# conda environments:
+#
+base                  *  /home/zwa281/miniconda
+env                      /home/zwa281/miniconda/envs/env
+myenv                    /home/zwa281/miniconda/envs/myenv
+

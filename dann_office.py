@@ -36,6 +36,9 @@ arg_parser.add_argument('--lr', type=float, default=1e-3)
 arg_parser.add_argument('--decay', type=float, default=1e-4)
 arg_parser.add_argument('--baseline', type=float, default=0.7, help='baseline accuracy for saving')
 
+print(torch.cuda.is_available())
+print(torch.cuda.device_count())
+print(torch.cuda.current_device())
 args = arg_parser.parse_args()
 N_CLASS = 31
 learning_rate = args.lr
