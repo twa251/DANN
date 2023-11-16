@@ -205,11 +205,11 @@ def main():
             inputs, labels = inputs.to(device), labels.to(device)
             model.eval()
             preds, features = model(inputs)            
-            labels_est1.append(preds.cpu().numpy())
+            labels_est1.append(preds.detach().cpu().numpy())
             preds = torch.max(preds, 1)[1]
             correct += torch.sum(preds == labels.data)
-            features_est.append(features.cpu().numpy())
-            labels_est.append(preds.cpu().numpy())
+            features_est.append(features.detach().cpu().numpy())
+            labels_est.append(preds.detach().cpu().numpy())
         target_acc = correct.double() / len(target_loader.dataset)
         target_acc = target_acc.cpu().numpy()
 
