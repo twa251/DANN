@@ -10,7 +10,7 @@
 #SBATCH --mail-user=twa251@uky.edu 
 #SBATCH --mail-type=ALL
 
-module load cuda/12.1
+module load cuda/12.5
 conda info --envs
 eval $(conda shell.bash hook)
 source ~/anaconda3/etc/profile.d/conda.sh
