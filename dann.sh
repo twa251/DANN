@@ -16,5 +16,5 @@ eval $(conda shell.bash hook)
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate pylava10
 
-python3 /scratch/wang_lab/BRCA_project/DANN/dann_office.py --source BACH --target TCGA --lr 0.01 --beta 0.1
+python3 /scratch/wang_lab/BRCA_project/DANN/dann_BRCA.py --source BACH --target TCGA --lr 0.01 --beta 0.1
 
