@@ -145,7 +145,7 @@ def main():
 
     ## load discriminator for multi-class classification
     half_batch = args.batch_size // 2
-    root_dir = 'data/OFFICE31/'
+    root_dir = 'data/DANN_ALL/'
     BATCH_SIZE = {'src': int(half_batch), 'tar': int(half_batch)}
     domain = {'src': str(args.source), 'tar': str(args.target)}
     dataloaders = {}
