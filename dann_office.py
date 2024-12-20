@@ -73,14 +73,14 @@ class disc(nn.Module):
     def __init__(self, model_name):
         super(disc, self).__init__()
         if model_name == 'alexnet':
-            n_features = 256
+            n_features = 256 #input feature size
         elif model_name == 'resnet':
             n_features = 2048
-        self.f1 = nn.Linear(n_features, 1024)
-        self.f2 = nn.Linear(1024,1024)
-        self.logit = nn.Linear(1024, 1)
+        self.f1 = nn.Linear(n_features, 1024) # hidden layer 1
+        self.f2 = nn.Linear(1024,1024) # hidden layer 2
+        self.logit = nn.Linear(1024, 1) # output layer
     def forward(self,x,alpha):
-        x = ReverseLayerF.apply(x, alpha)
+        x = ReverseLayerF.apply(x, alpha) # GRL
         x = F.dropout(F.relu(self.f1(x)))
         x = F.dropout(F.relu(self.f2(x)))
         x = self.logit(x)
@@ -175,6 +175,8 @@ def main():
             set_requires_grad(model, requires_grad=True)
             set_requires_grad(disc_model, requires_grad=True)
             model.train()
+            # SOURCE_Y is cancer stage
+            # targe Y remove ( TCGE'S label give a random number)
             (source_x, source_y), (target_x, target_y) = next(batch_iterator)
             source_x, target_x = source_x.to(device), target_x.to(device)
             source_y, target_y = source_y.to(device), target_y.to(device)
