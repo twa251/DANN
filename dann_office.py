@@ -9,7 +9,7 @@ from utils import loop_iterable, set_requires_grad, GrayscaleToRgb
 import data_loader_office as data_loader
 import numpy as np
 import torch
-import torch.nn as nn
+import torch.nn as nn # neural network layers, ex: nn.Linear, nn.Conv2d, nn.ReLU
 import torch.optim as optim
 import torchvision
 from numpy.linalg import inv, eig
@@ -50,8 +50,8 @@ MOMENTUM = 0.9 # common value 0.9, 0.99, here 90% of the previous gradient 's in
 # weight decay parameter
 DECAY = args.decay
 n_disc = N_CLASS
-criterion = nn.BCEWithLogitsLoss()
-cls_criterion = nn.CrossEntropyLoss()
+criterion = nn.BCEWithLogitsLoss() #discriminator is trained to differentiate between domains
+cls_criterion = nn.CrossEntropyLoss() # training the classifier to predict class (ex 31 class in office; 4 cell stage) 
 
 def one_hot(batch,depth):
     ones = torch.sparse.torch.eye(depth).to(device)
