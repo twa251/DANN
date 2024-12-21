@@ -209,8 +209,11 @@ def main():
         ## evaluation the acc for target domain
         features_est = []
         labels_est1, labels_est = [],[]
-        for inputs, labels in target_loader_test:
-            inputs, labels = inputs.to(device), labels.to(device)
+            # 2024-12-20 replace label to _ since target doesn't have label
+            # org: for inputs, labels in target_loader_test:
+        for inputs, _ in target_loader_test:
+                # org: inputs, labels = inputs.to(device), labels.to(device)
+            inputs = inputs.to(device)
             model.eval()
             preds, features = model(inputs)            
             labels_est1.append(preds.detach().cpu().numpy())
