@@ -175,15 +175,18 @@ def main():
             set_requires_grad(model, requires_grad=True)
             set_requires_grad(disc_model, requires_grad=True)
             model.train()
-            # SOURCE_Y is cancer stage
-            # targe Y remove ( TCGE'S label give a random number)
-            (source_x, source_y), (target_x, target_y) = next(batch_iterator)
+                # change made: 2024-12-20
+                # SOURCE_Y is a cancer stage
+                # targe Y remove ( TCGE'S label gives a random number)
+                # org: (source_x, source_y), (target_x, target_y) = next(batch_iterator)
+            (source_x, source_y), (target_x, _) = next(batch_iterator)
             source_x, target_x = source_x.to(device), target_x.to(device)
-            source_y, target_y = source_y.to(device), target_y.to(device)
+                # org: source_y, target_y = source_y.to(device), target_y.to(device)
+            source_y = source_y.to(device)
             source_pred, source_feature = model(source_x)
             target_pred, target_feature = model(target_x)
             cls_loss = cls_criterion(source_pred, source_y)
-            # discriminator
+                # discriminator
             discriminator_x = torch.cat([source_feature, target_feature]).squeeze()
             #print(discriminator_x.size())
             discriminator_y = torch.cat([torch.ones(source_x.shape[0], device=device),
