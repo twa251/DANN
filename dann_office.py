@@ -89,7 +89,7 @@ class disc(nn.Module):
 
 
 
-
+# load pre-trained model
 def load_model(name='alexnet'):
     if name == 'alexnet':
         model = alexnet.alexnet(pretrained=True) # pre-trained: they already learned general features ( e,g edge, textures, and shapes)
@@ -122,15 +122,15 @@ def main():
         if model_name == 'alexnet':
             param_group = [{'params': model.features.parameters(), 'lr': learning_rate}]
             for i in range(6):
-                param_group += [{'params': model.classifier[i].parameters(), 'lr': learning_rate}]
-            param_group += [{'params': model.classifier[6].parameters(), 'lr': learning_rate * 10}]
+                param_group += [{'params': model.classifier[i].parameters(), 'lr': learning_rate}] # += similar as append, which add another item
+            param_group += [{'params': model.classifier[6].parameters(), 'lr': learning_rate * 10}] # applied higher learning_rate to final layer
         elif model_name == 'resnet':
             param_group = []
             for k, v in model.named_parameters():
                 if not k.__contains__('fc'):
                     param_group += [{'params': v, 'lr': learning_rate}]
                 else:
-                    param_group += [{'params': v, 'lr': learning_rate * 10}]
+                    param_group += [{'params': v, 'lr': learning_rate * 10}] # applied higher learning_rate to final layer
         param_group += [{'params': disc_model.parameters(), 'lr': learning_rate * 10}]
         optimizer = optim.SGD(param_group, momentum=MOMENTUM, weight_decay=DECAY)
         #optimizer = optim.Adam(param_group, weight_decay=DECAY)
@@ -139,7 +139,7 @@ def main():
     # Schedule learning rate
     def lr_schedule(optimizer, epoch):
         def lr_decay(LR, n_epoch, e):
-            return LR / (1 + 10 * e / n_epoch) ** 0.75
+            return LR / (1 + 10 * e / n_epoch) ** 0.75 #new lr
         for i in range(len(optimizer.param_groups)):
             if i < len(optimizer.param_groups) - 2:
                 optimizer.param_groups[i]['lr'] = lr_decay(learning_rate, args.epochs, epoch)
@@ -152,7 +152,7 @@ def main():
     BATCH_SIZE = {'src': int(half_batch), 'tar': int(half_batch)}
     domain = {'src': str(args.source), 'tar': str(args.target)}
     dataloaders = {}
-    target_loader = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'tar')
+    target_loader = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'tar') # batch: subset
     target_loader_test = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'test')
     source_loader = data_loader.load_data(root_dir, domain['src'], BATCH_SIZE['src'], 'src')
     # print(target_loader)
@@ -165,14 +165,14 @@ def main():
         disc_loss_v = 0
         cls_loss_v = 0
         correct = 0.
-        lr_schedule(optimizer, epoch-1)
+        lr_schedule(optimizer, epoch-1) # lr adjustment
 
         len_dataloader = min(len(source_loader), len(target_loader))
-        for l in trange(len_dataloader, leave=False):
+        for l in trange(len_dataloader, leave=False): #trange create process bar while iterating, l is current iteration index
             # Train discriminator
             p = float(l + epoch*len_dataloader)/args.epochs/len_dataloader
-            alpha = 2./(1.+np.exp(-10*p)) - 1
-            set_requires_grad(model, requires_grad=True)
+            alpha = 2./(1.+np.exp(-10*p)) - 1 #scaling para 
+            set_requires_grad(model, requires_grad=True) # allow update during backpropagation
             set_requires_grad(disc_model, requires_grad=True)
             model.train()
                 # change made: 2024-12-20
@@ -187,18 +187,19 @@ def main():
             target_pred, target_feature = model(target_x)
             cls_loss = cls_criterion(source_pred, source_y)
                 # discriminator
-            discriminator_x = torch.cat([source_feature, target_feature]).squeeze()
+            discriminator_x = torch.cat([source_feature, target_feature]).squeeze() #remove extra singleton dimension
             #print(discriminator_x.size())
-            discriminator_y = torch.cat([torch.ones(source_x.shape[0], device=device),
+                # create labels for source (1) and target (0) domain
+            discriminator_y = torch.cat([torch.ones(source_x.shape[0], device=device), 
                                          torch.zeros(target_x.shape[0], device=device)])
-            disc_output = disc_model(discriminator_x, alpha).squeeze()
-            disc_loss = criterion(disc_output, discriminator_y)
+            disc_output = disc_model(discriminator_x, alpha).squeeze() # value = 1: discriminator thinks the feature belongs to the source domain; 0 o.w
+            disc_loss = criterion(disc_output, discriminator_y) #loss for disc
             #print(disc_loss.size())
             disc_accuracy = ((disc_output > 0).long() == discriminator_y.long()).float().mean().item()
-            optimizer.zero_grad()
+            optimizer.zero_grad() #resets the gradients of all parameters to avoid accumulation from previous steps.
             loss = cls_loss + beta*disc_loss
-            loss.backward()
-            optimizer.step()
+            loss.backward() #computes the gradients for the combined loss (cls_loss + beta * disc_loss).
+            optimizer.step() #updates the model and discriminator parameters using the gradients.
             #beta = beta * (2 / (1 + np.exp(-10. * epoch / args.epochs)) - 1)  ## calculate beta
             disc_loss_v += disc_loss.item()
             cls_loss_v += cls_loss.item()
