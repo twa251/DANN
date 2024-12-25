@@ -60,18 +60,18 @@ def one_hot(batch,depth):
 
 class ReverseLayerF(Function):
     @staticmethod
-    def forward(ctx, x, alpha):
-        ctx.alpha = alpha
-        return x.view_as(x)
+    def forward(ctx, x, alpha): # alpha is chosen between 10**-2 and 1 (in DANN paper choose among 9 values) 
+        ctx.alpha = alpha # store scaling factor alpha for later use in backpropagation 
+        return x.view_as(x) # Pass the input 'x' unchanged
 
     @staticmethod
     def backward(ctx, grad_output):
-        output=grad_output.neg()*ctx.alpha
+        output=grad_output.neg()*ctx.alpha 
         return output, None
 
 class disc(nn.Module):
     def __init__(self, model_name):
-        super(disc, self).__init__()
+        super(disc, self).__init__() # call the constructor for the parent class (nn.Modile)
         if model_name == 'alexnet':
             n_features = 256 #input feature size
         elif model_name == 'resnet':
@@ -81,9 +81,9 @@ class disc(nn.Module):
         self.logit = nn.Linear(1024, 1) # output layer
     def forward(self,x,alpha):
         x = ReverseLayerF.apply(x, alpha) # GRL
-        x = F.dropout(F.relu(self.f1(x)))
+        x = F.dropout(F.relu(self.f1(x))) # pervent overfitting
         x = F.dropout(F.relu(self.f2(x)))
-        x = self.logit(x)
+        x = self.logit(x) # un-normalized score (binary) for domain classification 
         return x
 
 
