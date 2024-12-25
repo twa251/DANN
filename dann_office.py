@@ -76,7 +76,7 @@ class disc(nn.Module):
             n_features = 256 #input feature size
         elif model_name == 'resnet':
             n_features = 2048
-        self.f1 = nn.Linear(n_features, 1024) # hidden layer 1
+        self.f1 = nn.Linear(n_features, 1024) # hidden layer 1 input size: n_feature, output size: 1024
         self.f2 = nn.Linear(1024,1024) # hidden layer 2
         self.logit = nn.Linear(1024, 1) # output layer
     def forward(self,x,alpha):
@@ -92,10 +92,10 @@ class disc(nn.Module):
 
 def load_model(name='alexnet'):
     if name == 'alexnet':
-        model = alexnet.alexnet(pretrained=True)
-        n_features = model.classifier[6].in_features
-        fc = torch.nn.Linear(n_features, N_CLASS)
-        model.classifier[6] = fc
+        model = alexnet.alexnet(pretrained=True) # pre-trained: they already learned general features ( e,g edge, textures, and shapes)
+        n_features = model.classifier[6].in_features # get the number of input features of the last layer. 
+        fc = torch.nn.Linear(n_features, N_CLASS) # fully connect layer defined: nn.Linear(in_features, out_features), now we replace the output feature to N_CLASS 
+        model.classifier[6] = fc # now we updated the alexnet with new fc layer
     elif name == 'resnet':
         model = resnet.resnet50(pretrained=True)
         n_features = model.fc.in_features
