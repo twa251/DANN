@@ -51,4 +51,4 @@ def assign_wsi_to_classes(input_dir, output_dir, num_classes=10, mapping_file="w
 if __name__ == "__main__":
     input_directory = "/scratch/wang_lab/BRCA_project/DANN_BRCA/data/DANN_ALL/TCGA/TCGA_BRCA_temp_tw"  # Replace with your input directory
     output_directory = "/scratch/wang_lab/BRCA_project/DANN_BRCA/data/DANN_ALL/TCGA/TCGA_BRCA_dummy_class"  # Replace with your output directory
-    assign_wsi_to_classes(input_directory, output_directory, num_classes=10, output_file="wsi_class_mapping.txt")
+    assign_wsi_to_classes(input_directory, output_directory, num_classes=10, mapping_file="wsi_class_mapping.txt")
