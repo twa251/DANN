@@ -164,8 +164,8 @@ def main():
     ## load discriminator for multi-class classification
     half_batch = args.batch_size // 2
     #root_dir = 'data/DANN_ALL
-    root_dir_src = '/scratch/wang_lab/BRCA_project/DANN_BRCA/data/DANN_BRCA_img'
-    root_dir_tar = '/scratch/wang_lab/BRCA_project/DANN_BRCA/data/DANN_ALL/TCGA/WSI_resize_crop'
+    root_dir_src = '/scratch/wang_lab/BRCA_project/DANN_BRCA/data'
+    root_dir_tar = '/scratch/wang_lab/BRCA_project/DANN_BRCA/data/DANN_ALL'
     BATCH_SIZE = {'src': int(half_batch), 'tar': int(half_batch)}
     domain = {'src': str(args.source), 'tar': str(args.target)}
     dataloaders = {}
