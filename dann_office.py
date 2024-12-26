@@ -101,7 +101,18 @@ def load_model(name='alexnet'):
         n_features = model.fc.in_features
         fc = torch.nn.Linear(n_features, N_CLASS)
         model.fc = fc
-    return model
+    # update: 24-12-25 (begin)
+    # feature extractor
+    class FeatureExtractor(nn.Module):
+        def __init__(self, backbone):
+            super(FeatureExtractor, self).__init__()
+            self.backbone = nn.Sequential(*list(backbone.children())[:-1]) # Remobe FC layer
+        def forwaed(self,x):
+            x=self.backbone(x)
+            return x.view(x.size(0),-1) # flatten features
+
+    # end    
+    return model, feature_extractor
 
 
 
@@ -114,7 +125,11 @@ def main():
     ## load disc model
     disc_model = disc(model_name).to(device)
     #disc_model.apply(weights_init)
-    model = load_model(model_name).to(device)
+    # update 24-12-25
+    #model = load_model(model_name).to(device)
+    model, feature_extractor = load_model(model_name)
+    model = model.to(device) # new
+    feature_extractor = feature_extractor.to(device) # new
     ## define optimizer
 
 
@@ -152,9 +167,17 @@ def main():
     BATCH_SIZE = {'src': int(half_batch), 'tar': int(half_batch)}
     domain = {'src': str(args.source), 'tar': str(args.target)}
     dataloaders = {}
-    target_loader = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'tar') # batch: subset
-    target_loader_test = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'test')
-    source_loader = data_loader.load_data(root_dir, domain['src'], BATCH_SIZE['src'], 'src')
+    
+    # 24-12-25 update data_loader for npy file 
+    #target_loader = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'tar') # batch: subset
+    #target_loader_test = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'test')
+    #source_loader = data_loader.load_data(root_dir, domain['src'], BATCH_SIZE['src'], 'src')
+    # if file is npy: use_npy=True; o.w False
+    target_loader = load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'tar', use_npy=True)
+    target_loader_test = load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'test', use_npy=True)
+    source_loader = load_data(root_dir, domain['src'], BATCH_SIZE['src'], 'src', use_npy=False) 
+
+    
     # print(target_loader)
     # print(source_loader)
     optimizer = get_optimizer(model_name)
@@ -208,8 +231,21 @@ def main():
         mean_cls_loss = cls_loss_v / len_dataloader
 
         ## evaluation the acc for target domain
+          ## update 24-12-25 
+        feature_est=[]
+        for inputs, _ in target_loader_test:
+            inputs = inputs.to(device)
+            feature_extractor.eval()
+            features=feature_extractor(inputs)
+            features_est.append(features.detach().cpu().numpy())
+
+        # save extracted features
+        features_est = np.concatenate(features_est,axis=0)
+        np.save("extracted_features_target.npy",features_est)
+        
+        """
         features_est = []
-        labels_est1, labels_est = [],[]
+        #labels_est1, labels_est = [],[] #comment out 12-25
             # 2024-12-20 replace label to _ since target doesn't have label
             # org: for inputs, labels in target_loader_test:
         for inputs, _ in target_loader_test:
@@ -229,6 +265,8 @@ def main():
         labels_est = np.concatenate(labels_est,axis=0)
         labels_est1 = np.concatenate(labels_est1,axis=0)
 
+        """
+        
         #print(target_acc)
         if target_acc > best_target_acc:
             best_target_acc = target_acc
