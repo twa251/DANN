@@ -163,7 +163,9 @@ def main():
 
     ## load discriminator for multi-class classification
     half_batch = args.batch_size // 2
-    root_dir = 'data/DANN_ALL/'
+    #root_dir = 'data/DANN_ALL
+    root_dir_src = '/scratch/wang_lab/BRCA_project/DANN_BRCA/data/DANN_BRCA_img'
+    root_dir_tar = '/scratch/wang_lab/BRCA_project/DANN_BRCA/data/DANN_ALL/TCGA/WSI_resize_crop'
     BATCH_SIZE = {'src': int(half_batch), 'tar': int(half_batch)}
     domain = {'src': str(args.source), 'tar': str(args.target)}
     dataloaders = {}
@@ -173,9 +175,9 @@ def main():
     #target_loader_test = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'test')
     #source_loader = data_loader.load_data(root_dir, domain['src'], BATCH_SIZE['src'], 'src')
     # if file is npy: use_npy=True; o.w False
-    target_loader = load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'tar', use_npy=True)
-    target_loader_test = load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'test', use_npy=True)
-    source_loader = load_data(root_dir, domain['src'], BATCH_SIZE['src'], 'src', use_npy=False) 
+    target_loader = load_data(root_dir_tar, domain['tar'], BATCH_SIZE['tar'], 'tar', use_npy=True)
+    target_loader_test = load_data(root_dir_tar, domain['tar'], BATCH_SIZE['tar'], 'test', use_npy=True)
+    source_loader = load_data(root_dir_src, domain['src'], BATCH_SIZE['src'], 'src', use_npy=False) 
 
     
     # print(target_loader)
@@ -232,7 +234,7 @@ def main():
 
         ## evaluation the acc for target domain
           ## update 24-12-25 
-        feature_est=[]
+        features_est=[]
         for inputs, _ in target_loader_test:
             inputs = inputs.to(device)
             feature_extractor.eval()
