@@ -32,8 +32,9 @@ arg_parser.add_argument('--k-clf', type=int, default=1) # classifier update freq
 arg_parser.add_argument('--model', type=str, help='model name', default='resnet')
 #updated 2024-12-19 change default = 0 from 1
 arg_parser.add_argument('--cuda', type=int, help='cuda id', default=0)
-arg_parser.add_argument('--source', type=str, default='amazon')
-arg_parser.add_argument('--target', type=str, default='webcam')
+# update default
+arg_parser.add_argument('--source', type=str, default='DANN_BRCA_img')
+arg_parser.add_argument('--target', type=str, default='WSI_resize_crop')
 arg_parser.add_argument('--beta', type=float, default=1.)
 arg_parser.add_argument('--lr', type=float, default=1e-3)  #learning rate
 arg_parser.add_argument('--decay', type=float, default=1e-4)  #weight
