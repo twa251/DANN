@@ -39,6 +39,18 @@ class NpyDataset(Dataset):
         if self.transform:
             sample = self.transform(sample)
         return sample, 0  # Return a dummy label (0) for compatibility
+    def _validate_file_shapes(self):
+        """
+        Validate dimensions of all .npy files in the dataset.
+        """
+        for file_path in self.file_paths:
+            data = np.load(file_path)
+            if len(data.shape) == 3 and data.shape[-1] == 3:  # [H, W, C]
+                continue
+            elif len(data.shape) == 3 and data.shape[0] == 3:  # [C, H, W]
+                continue
+            else:
+                raise ValueError(f"Inconsistent shape in file {file_path}: {data.shape}. Expected 3D tensor with 3 channels.")
         
 def load_data(root_path, dir, batch_size, phase, use_npy=False):
     """
