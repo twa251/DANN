@@ -29,6 +29,7 @@ class NpyDataset(Dataset):
 
     def __getitem__(self, idx):
         # Load the .npy file
+        sample = np.load(self.file_paths[idx])
         if len(sample.shape) == 3 and sample.shape[-1] == 3:  # [H, W, C] -> [C, H, W]
             sample = np.transpose(sample, (2, 0, 1))
         elif len(sample.shape) != 3 or sample.shape[0] != 3:  # Validate 3-channel data
