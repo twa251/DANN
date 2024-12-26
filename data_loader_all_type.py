@@ -23,12 +23,17 @@ class NpyDataset(Dataset):
         
         self.transform = transform
 
+        self._validate_file_shapes() #check dim for all files
     def __len__(self):
         return len(self.file_paths)
 
     def __getitem__(self, idx):
         # Load the .npy file
-        sample = np.load(self.file_paths[idx])
+        if len(sample.shape) == 3 and sample.shape[-1] == 3:  # [H, W, C] -> [C, H, W]
+            sample = np.transpose(sample, (2, 0, 1))
+        elif len(sample.shape) != 3 or sample.shape[0] != 3:  # Validate 3-channel data
+            raise ValueError(f"Invalid .npy file shape: {sample.shape}. Expected [C, H, W] with 3 channels.")
+        
         sample = torch.tensor(sample, dtype=torch.float32)  # Convert to PyTorch tensor
         if self.transform:
             sample = self.transform(sample)
