@@ -114,7 +114,8 @@ def load_model(name='alexnet'):
         def forwaed(self,x):
             x=self.backbone(x)
             return x.view(x.size(0),-1) # flatten features
-
+            
+    feature_extractor = FeatureExtractor(model)
     # end    
     return model, feature_extractor
 
