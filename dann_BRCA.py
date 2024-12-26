@@ -180,9 +180,9 @@ def main():
     #target_loader_test = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'test')
     #source_loader = data_loader.load_data(root_dir, domain['src'], BATCH_SIZE['src'], 'src')
     # if file is npy: use_npy=True; o.w False
-    target_loader = load_data(root_dir_tar, domain['tar'], BATCH_SIZE['tar'], 'tar', use_npy=True)
-    target_loader_test = load_data(root_dir_tar, domain['tar'], BATCH_SIZE['tar'], 'test', use_npy=True)
-    source_loader = load_data(root_dir_src, domain['src'], BATCH_SIZE['src'], 'src', use_npy=False) 
+    target_loader = data_loader.load_data(root_dir_tar, domain['tar'], BATCH_SIZE['tar'], 'tar', use_npy=True)
+    target_loader_test = data_loader.load_data(root_dir_tar, domain['tar'], BATCH_SIZE['tar'], 'test', use_npy=True)
+    source_loader = data_loader.load_data(root_dir_src, domain['src'], BATCH_SIZE['src'], 'src', use_npy=False) 
 
     
     # print(target_loader)
