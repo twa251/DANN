@@ -24,11 +24,13 @@ import os,sys
 arg_parser = argparse.ArgumentParser(description='Domain adaptation using ADDA')
 arg_parser.add_argument('--batch-size', type=int, default=64)
 arg_parser.add_argument('--threshold', help='threshold for explained PCA variations', type=float, default=0.8)
-arg_parser.add_argument('--epochs', type=int, default=500) #iterations per epoch= num of samples in data / batch size 
+# TW: CHANGE EPOCH DEFAULT = 50 (ORG=500)
+arg_parser.add_argument('--epochs', type=int, default=50)#iterations per epoch= num of samples in data / batch size 
 arg_parser.add_argument('--k-disc', type=int, default=5) # discriminator update frequency
 arg_parser.add_argument('--k-clf', type=int, default=1) # classifier update frequency (job: correct predict class labels for the input data)
 arg_parser.add_argument('--model', type=str, help='model name', default='resnet')
-arg_parser.add_argument('--cuda', type=int, help='cuda id', default=1)
+#updated 2024-12-19 change default = 0 from 1
+arg_parser.add_argument('--cuda', type=int, help='cuda id', default=0)
 arg_parser.add_argument('--source', type=str, default='amazon')
 arg_parser.add_argument('--target', type=str, default='webcam')
 arg_parser.add_argument('--beta', type=float, default=1.)
@@ -41,7 +43,7 @@ print(torch.cuda.device_count())
 print(torch.cuda.current_device())
 args = arg_parser.parse_args()
 # 2024-12-20 May have to replace N_Class to 4? (cell stage)
-N_CLASS = 31
+N_CLASS = 4
 learning_rate = args.lr
 device = torch.device('cuda:' + str(args.cuda) if torch.cuda.is_available() else 'cpu')
 #TW:Gy(Gf(x):V,c)=softmax(Gf(x)+c)
