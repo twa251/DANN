@@ -2,7 +2,7 @@ import os
 import random
 import shutil
 
-def assign_wsi_and_copy_files(input_dir, output_dir, num_classes=10, mapping_file="wsi_class_mapping.txt"):
+def assign_wsi_to_classes(input_dir, output_dir, num_classes=10, mapping_file="wsi_class_mapping.txt"):
     """
     Assigns each WSI folder to a random dummy class, writes the mapping to a text file,
     and copies the files into folders based on the assigned dummy class.
