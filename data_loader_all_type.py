@@ -12,7 +12,15 @@ class NpyDataset(Dataset):
             root_path (str): Directory containing .npy files.
             transform (callable, optional): Optional transform to apply to each sample.
         """
-        self.file_paths = [os.path.join(root_path, f) for f in os.listdir(root_path) if f.endswith('.npy')]
+        self.file_paths = []
+        for subdir, _, files in os.walk(root_path):  # Traverse all subdirectories
+            for file in files:
+                if file.endswith('.npy'):
+                    self.file_paths.append(os.path.join(subdir, file))
+        
+        if not self.file_paths:
+            raise ValueError(f"No .npy files found in {root_path}")
+        
         self.transform = transform
 
     def __len__(self):
@@ -25,6 +33,7 @@ class NpyDataset(Dataset):
         if self.transform:
             sample = self.transform(sample)
         return sample, 0  # Return a dummy label (0) for compatibility
+        
 def load_data(root_path, dir, batch_size, phase, use_npy=False):
     """
     Load data for training, validation, or testing.
@@ -39,7 +48,9 @@ def load_data(root_path, dir, batch_size, phase, use_npy=False):
     """
     if use_npy:
         # Load .npy files
-        transform = transforms.Compose([transforms.Normalize(mean=[0.5], std=[0.5])])
+        transform = transforms.Compose([
+            transforms.Lambda(lambda x: (x - x.mean()) / (x.std() + 1e-6))  # Normalize for numerical stability
+        ])
         dataset = NpyDataset(root_path=os.path.join(root_path, dir), transform=transform)
     else:
         # Load image data using ImageFolder
