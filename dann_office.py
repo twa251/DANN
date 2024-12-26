@@ -6,7 +6,8 @@ import torch
 from torch import nn
 from tqdm import tqdm, trange
 from utils import loop_iterable, set_requires_grad, GrayscaleToRgb
-import data_loader_office as data_loader
+# update data_loader
+import data_loader_all_type as data_loader
 import numpy as np
 import torch
 import torch.nn as nn # neural network layers, ex: nn.Linear, nn.Conv2d, nn.ReLU
