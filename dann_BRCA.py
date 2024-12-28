@@ -94,24 +94,18 @@ class disc(nn.Module):
 
 
 # load pre-trained model
-def load_model(name='alexnet'):
-    if name == 'alexnet':
-        model = alexnet.alexnet(pretrained=True) # pre-trained: they already learned general features ( e,g edge, textures, and shapes)
-        n_features = model.classifier[6].in_features # get the number of input features of the last layer. 
-        fc = torch.nn.Linear(n_features, N_CLASS) # fully connect layer defined: nn.Linear(in_features, out_features), now we replace the output feature to N_CLASS 
-        model.classifier[6] = fc # now we updated the alexnet with new fc layer
-    elif name == 'resnet':
-        model = resnet.resnet50(pretrained=True)
-        n_features = model.fc.in_features
-        fc = torch.nn.Linear(n_features, N_CLASS)
-        model.fc = fc
+def load_model():
+    model = resnet.resnet50(pretrained=True)
+    n_features = model.fc.in_features
+    fc = torch.nn.Linear(n_features, N_CLASS)
+    model.fc = fc
     # update: 24-12-25 (begin)
     # feature extractor
     class FeatureExtractor(nn.Module):
         def __init__(self, backbone):
             super(FeatureExtractor, self).__init__()
             self.backbone = nn.Sequential(*list(backbone.children())[:-1]) # Remobe FC layer
-        def forwaed(self,x):
+        def forward(self,x):
             x=self.backbone(x)
             return x.view(x.size(0),-1) # flatten features
             
@@ -139,12 +133,14 @@ def main():
 
 
     def get_optimizer(model_name):
-        if model_name == 'alexnet':
-            param_group = [{'params': model.features.parameters(), 'lr': learning_rate}]
-            for i in range(6):
-                param_group += [{'params': model.classifier[i].parameters(), 'lr': learning_rate}] # += similar as append, which add another item
-            param_group += [{'params': model.classifier[6].parameters(), 'lr': learning_rate * 10}] # applied higher learning_rate to final layer
-        elif model_name == 'resnet':
+        # 2024-12-27 updated 
+        #if model_name == 'alexnet':
+        #    param_group = [{'params': model.features.parameters(), 'lr': learning_rate}]
+        #    for i in range(6):
+        #        param_group += [{'params': model.classifier[i].parameters(), 'lr': learning_rate}] # += similar as append, which add another item
+        #    param_group += [{'params': model.classifier[6].parameters(), 'lr': learning_rate * 10}] # applied higher learning_rate to final layer
+        #elif model_name == 'resnet':
+         model_name == 'resnet':
             param_group = []
             for k, v in model.named_parameters():
                 if not k.__contains__('fc'):
