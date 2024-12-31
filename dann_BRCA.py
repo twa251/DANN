@@ -23,10 +23,10 @@ import os,sys
 #from finetune_office31 import load_model
 # command setting
 arg_parser = argparse.ArgumentParser(description='Domain adaptation using ADDA')
-arg_parser.add_argument('--batch-size', type=int, default=64)
+arg_parser.add_argument('--batch-size', type=int, default=128)
 arg_parser.add_argument('--threshold', help='threshold for explained PCA variations', type=float, default=0.8)
-# TW: CHANGE EPOCH DEFAULT = 50 (ORG=500)
-arg_parser.add_argument('--epochs', type=int, default=50)#iterations per epoch= num of samples in data / batch size 
+# TW: CHANGE EPOCH DEFAULT = 50000 (ORG=500)
+arg_parser.add_argument('--epochs', type=int, default=50000)#iterations per epoch= num of samples in data / batch size 
 arg_parser.add_argument('--k-disc', type=int, default=5) # discriminator update frequency
 arg_parser.add_argument('--k-clf', type=int, default=1) # classifier update frequency (job: correct predict class labels for the input data)
 arg_parser.add_argument('--model', type=str, help='model name', default='resnet')
