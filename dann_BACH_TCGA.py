@@ -115,13 +115,9 @@ def load_model(name='resnet'):
 
 
 def main():
-    # torch.manual_seed(100)
-    # torch.cuda.manual_seed(100)
-    ## load model name
+
     model_name = str(args.model)
-    ## load disc model
     disc_model = disc(model_name).to(device)
-    #disc_model.apply(weights_init)
     model = load_model(model_name).to(device)
     ## define optimizer
 
@@ -159,28 +155,31 @@ def main():
     half_batch = args.batch_size // 2
     root_dir = '/scratch/wang_lab/BRCA_project/Data'
     BATCH_SIZE = {'src': int(half_batch), 'tar': int(half_batch)}
-    domain = {'src': str(args.source), 'tar': str(args.target)}
-    dataloaders = {}
-    target_loader = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'tar')
-    target_loader_test = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'test')
-    source_loader = data_loader.load_data(root_dir, domain['src'], BATCH_SIZE['src'], 'src')
+    #domain = {'src': str(args.source), 'tar': str(args.target)}
+    #dataloaders = {}
+    # add validaiton loader
+    #target_loader= data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'tar')
+    #target_loader_test = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'test')
+    #source_loader = data_loader.load_data(root_dir, domain['src'], BATCH_SIZE['src'], 'src')
+    train_loader, val_loader = data_loader.load_data(root_dir, args.source, args.batch_size,phase='src')  # UPDATED: Added validation loader
+    target_loader = data_loader.load_data(root_dir, args.target, args.batch_size,phase='tar')  # UPDATED: Target data loader uses 80% split
     # print(target_loader)
     # print(source_loader)
     optimizer = get_optimizer(model_name)
-    best_target_acc = 0.
-    beta = args.beta
+    #best_target_acc = 0.
+    #beta = args.beta
     # Save each epoch as a result
-    checkpoint_dir = f'dann_office/{args.source}_{args.target}/{args.decay}_{args.lr}_{args.beta}'
+    checkpoint_dir = f'dann_brca/{args.source}_{args.target}/{args.decay}_{args.lr}_{args.beta}'
     ensure_dir(checkpoint_dir)
 
     for epoch in range(1, args.epochs+1):
-        batch_iterator = zip(loop_iterable(source_loader), loop_iterable(target_loader))
+        batch_iterator = zip(loop_iterable(train_loader), loop_iterable(target_loader))
         disc_loss_v = 0
         cls_loss_v = 0
         correct = 0.
         lr_schedule(optimizer, epoch-1)
 
-        len_dataloader = min(len(source_loader), len(target_loader))
+        len_dataloader = min(len(train_loader), len(target_loader))  #source_loader -> train_loader
         for l in trange(len_dataloader, leave=False):
             # Train discriminator
             p = float(l + epoch*len_dataloader)/args.epochs/len_dataloader
@@ -188,9 +187,10 @@ def main():
             set_requires_grad(model, requires_grad=True)
             set_requires_grad(disc_model, requires_grad=True)
             model.train()
-            (source_x, source_y), (target_x, target_y) = next(batch_iterator)
-            source_x, target_x = source_x.to(device), target_x.to(device)
-            source_y, target_y = source_y.to(device), target_y.to(device)
+            (source_x, source_y), target_x = next(batch_iterator) # no target y needed
+            source_x, target_x = source_x.to(device)
+            source_y= source_y.to(device) # removed target y
+
             source_pred, source_feature = model(source_x)
             target_pred, target_feature = model(target_x)
             cls_loss = cls_criterion(source_pred, source_y)
@@ -214,57 +214,39 @@ def main():
         mean_disc_loss = disc_loss_v / len_dataloader
         mean_cls_loss = cls_loss_v / len_dataloader
 
+        # Add validation loop
+        model.eval()
+        val_correct = 0.
+        with torch.no_grad():
+            for inputs, labels in val_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                preds = model(inputs)
+                preds = torch.max(preds, 1)[1]
+                val_correct += torch.sum(preds == labels.data)
+            val_acc = val_correct.double() / len(val_loader.dataset)
+            print(f"Validation Accuracy: {val_acc:.4f}")
+
         ## evaluation the acc for target domain
-        features_est = []
-        labels_est1, labels_est = [],[]
-        for inputs, labels in target_loader_test:
-            inputs, labels = inputs.to(device), labels.to(device)
-            model.eval()
-            preds, features = model(inputs)
-            labels_est1.append(preds.detach().cpu().numpy())
-            preds = torch.max(preds, 1)[1]
-            correct += torch.sum(preds == labels.data)
-            features_est.append(features.detach().cpu().numpy())
-            labels_est.append(preds.detach().cpu().numpy())
-        target_acc = correct.double() / len(target_loader.dataset)
-        target_acc = target_acc.cpu().numpy()
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    checkpoint_path = f"{checkpoint_dir}/epoch_{epoch:02d}_valacc_{val_acc:.4f}.pth"
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'disc_model_state_dict': disc_model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'validation_accuracy': val_acc,
+        'mean_disc_loss': mean_disc_loss,
+        'mean_cls_loss': mean_cls_loss
+    }, checkpoint_path)
+    print(f"Checkpoint saved at {checkpoint_path}")
 
-        features_est = np.concatenate(features_est,axis=0)
-        labels_est = np.concatenate(labels_est,axis=0)
-        labels_est1 = np.concatenate(labels_est1,axis=0)
+    # Save feature representations for debugging (NEW)
+    feature_save_path = f"{checkpoint_dir}/features_epoch_{epoch:02d}.npz"
+    features_est = np.concatenate([source_feature.detach().cpu().numpy(),
+                                   target_feature.detach().cpu().numpy()], axis=0)
+    np.savez(feature_save_path, features=features_est)
+    print(f"Features saved at {feature_save_path}")
 
-        #print(target_acc)
-        if target_acc > best_target_acc:
-            best_target_acc = target_acc
-            if best_target_acc > args.baseline:
-                timestampTime = time.strftime("%H%M%S")
-                timestampDate = time.strftime("%d%m%Y")
-                timestampLaunch = timestampDate + '-' + timestampTime
-                if not os.path.exists('dann_office/{}_{}/'.format(args.source, args.target)):
-                    os.makedirs('dann_office/{}_{}/'.format(args.source, args.target))
-                if not os.path.exists('dann_office/{}_{}/{}_{}_{}'.format(args.source, args.target, args.decay, args.lr, args.beta)):
-                    os.makedirs('dann_office/{}_{}/{}_{}_{}'.format(args.source, args.target, args.decay, args.lr, args.beta))
-                torch.save({'epoch': epoch + 1, 'model_state_dict': model.state_dict(), 'disc_model_state_dict': disc_model.state_dict(),
-                    'optimizer' : optimizer.state_dict()}, 'dann_office/{}_{}/{}_{}_{}/'.format(args.source, args.target, args.decay, args.lr, args.beta) + timestampLaunch + '_' + str(epoch) + '_' + str(round(best_target_acc.item(),3)) + '.pth.tar')
-                np.savez('dann_office/{}_{}/{}_{}_{}/'.format(args.source, args.target, args.decay, args.lr, args.beta) + timestampLaunch + '_' + str(epoch) + '_' + str(round(best_target_acc.item(),3)) + '.npz', features_est, labels_est, labels_est1)
-        if epoch == args.epochs:
-            print('save the last epoch model')
-            timestampTime = time.strftime("%H%M%S")
-            timestampDate = time.strftime("%d%m%Y")
-            timestampLaunch = timestampDate + '-' + timestampTime
-            if not os.path.exists('dann_office/{}_{}/'.format(args.source, args.target)):
-                os.makedirs('dann_office/{}_{}/'.format(args.source, args.target))
-            if not os.path.exists('dann_office/{}_{}/{}_{}_{}'.format(args.source, args.target, args.decay, args.lr, args.beta)):
-                os.makedirs('dann_office/{}_{}/{}_{}_{}'.format(args.source, args.target, args.decay, args.lr, args.beta))
-            torch.save({'epoch': epoch + 1, 'model_state_dict': model.state_dict(), 'disc_model_state_dict': disc_model.state_dict(),
-                'optimizer' : optimizer.state_dict()}, 'dann_office/{}_{}/{}_{}_{}/'.format(args.source, args.target, args.decay, args.lr, args.beta) + timestampLaunch + '_' + str(epoch) + '_' + str(round(target_acc.item(),3)) + '.pth.tar')
-            np.savez('dann_office/{}_{}/{}_{}_{}/'.format(args.source, args.target, args.decay, args.lr, args.beta) + timestampLaunch + '_' + str(epoch) + '_' + str(round(target_acc.item(),3)) + '.npz', features_est, labels_est, labels_est1)
-
-
-        tqdm.write(f'EPOCH {epoch:03d}: test_acc={target_acc:.4f}, disc_loss={mean_disc_loss:.4f}, cls_loss={mean_cls_loss:.4f}, disc_acc={disc_accuracy:.4f}')
-
-    with open('dann_office.o', 'w') as f:
-        f.write('save')
 
 if __name__ == '__main__':
 
