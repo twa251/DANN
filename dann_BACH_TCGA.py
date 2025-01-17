@@ -30,13 +30,13 @@ import os,sys
 arg_parser = argparse.ArgumentParser(description='Domain adaptation using ADDA')
 arg_parser.add_argument('--batch-size', type=int, default=128) #update to 128
 arg_parser.add_argument('--threshold', help='threshold for explained PCA variations', type=float, default=0.8)
-arg_parser.add_argument('--epochs', type=int, default=20) #  run 20 epoch
+arg_parser.add_argument('--epochs', type=int, default=40) #  run 30-50 epoch
 arg_parser.add_argument('--k-disc', type=int, default=5)
 arg_parser.add_argument('--k-clf', type=int, default=1)
 arg_parser.add_argument('--model', type=str, help='model name', default='resnet')
 arg_parser.add_argument('--cuda', type=int, help='cuda id', default=0) # org = 1
-arg_parser.add_argument('--source', type=str, default='BACH')
-arg_parser.add_argument('--target', type=str, default='TCGA')
+arg_parser.add_argument('--source', type=str, default='BACH_resize_crop_train')# updated 25-01-02
+arg_parser.add_argument('--target', type=str, default='TCGA_resize_crop') # update 25-01-02
 arg_parser.add_argument('--beta', type=float, default=1.)
 arg_parser.add_argument('--lr', type=float, default=1e-3)
 arg_parser.add_argument('--decay', type=float, default=1e-4) # need try different lr
@@ -153,24 +153,42 @@ def main():
 
     ## load discriminator for multi-class classification
     half_batch = args.batch_size // 2
-    root_dir = '/scratch/wang_lab/BRCA_project/Data'
+    ### Test location: For test code only, wil update to the final location later
+    root_dir = '/scratch/wang_lab/BRCA_project/Data/'
+    #root_dir = '/home/twa251/DANN_BRCA/' #test directory
+    out_dir ='/scratch/wang_lab/BRCA_project/DANN_BACH_TCGA_output/'
+
+    #TCGA matching file:
+    TCGA_unique_match = '/scratch/wang_lab/BRCA_project/Data/TCGA_samples_description_UniquelyMatched.csv'
     BATCH_SIZE = {'src': int(half_batch), 'tar': int(half_batch)}
     #domain = {'src': str(args.source), 'tar': str(args.target)}
     #dataloaders = {}
-    # add validaiton loader
-    #target_loader= data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'tar')
-    #target_loader_test = data_loader.load_data(root_dir, domain['tar'], BATCH_SIZE['tar'], 'test')
-    #source_loader = data_loader.load_data(root_dir, domain['src'], BATCH_SIZE['src'], 'src')
-    train_loader, val_loader = data_loader.load_data(root_dir, args.source, args.batch_size,phase='src')  # UPDATED: Added validation loader
-    target_loader = data_loader.load_data(root_dir, args.target, args.batch_size,phase='tar')  # UPDATED: Target data loader uses 80% split
-    # print(target_loader)
-    # print(source_loader)
+
+    train_loader, val_loader = data_loader.load_data(
+        root_dir,
+        args.source,
+        args.batch_size,
+        phase='src',
+        is_target=False
+    )  # UPDATED: Added validation loader
+
+    target_loader, target_val_loader = data_loader.load_data(
+        root_dir,
+        args.target,
+        args.batch_size,
+        phase='tar',
+        is_target = True,
+        TCGA_unique_match=TCGA_unique_match
+    )  # UPDATED: Target data loader uses 80% split
+
     optimizer = get_optimizer(model_name)
-    #best_target_acc = 0.
-    #beta = args.beta
+
+    beta = args.beta
     # Save each epoch as a result
-    checkpoint_dir = f'dann_brca/{args.source}_{args.target}/{args.decay}_{args.lr}_{args.beta}'
+    checkpoint_dir = f'{out_dir}/dann_brca/{args.source}_{args.target}/{args.decay}_{args.lr}_{args.beta}'
     ensure_dir(checkpoint_dir)
+
+    best_val_acc = 0.0
 
     for epoch in range(1, args.epochs+1):
         batch_iterator = zip(loop_iterable(train_loader), loop_iterable(target_loader))
@@ -188,12 +206,17 @@ def main():
             set_requires_grad(disc_model, requires_grad=True)
             model.train()
             (source_x, source_y), target_x = next(batch_iterator) # no target y needed
-            source_x, target_x = source_x.to(device)
+            source_x, target_x = source_x.to(device), target_x.to(device)
             source_y= source_y.to(device) # removed target y
-
+            #print(f"Source_x shape: {source_x.shape}, Source_y shape: {source_y.shape}") #check code
+            #print(f"Target_x shape: {target_x.shape}") #check code
+            # Forward pass
             source_pred, source_feature = model(source_x)
             target_pred, target_feature = model(target_x)
+
+            # Classification loss: BACH (source domain only)
             cls_loss = cls_criterion(source_pred, source_y)
+
             # discriminator
             discriminator_x = torch.cat([source_feature, target_feature]).squeeze()
             #print(discriminator_x.size())
@@ -201,13 +224,18 @@ def main():
                                          torch.zeros(target_x.shape[0], device=device)])
             disc_output = disc_model(discriminator_x, alpha).squeeze()
             disc_loss = criterion(disc_output, discriminator_y)
+
             #print(disc_loss.size())
-            disc_accuracy = ((disc_output > 0).long() == discriminator_y.long()).float().mean().item()
+            #disc_accuracy = ((disc_output > 0).long() == discriminator_y.long()).float().mean().item()
+
+            # Backpropagation
             optimizer.zero_grad()
-            loss = cls_loss + beta*disc_loss
-            loss.backward()
+            total_loss = cls_loss + beta*disc_loss
+            total_loss.backward()
             optimizer.step()
-            #beta = beta * (2 / (1 + np.exp(-10. * epoch / args.epochs)) - 1)  ## calculate beta
+
+            # Track loss
+            beta = beta * (2 / (1 + np.exp(-10. * epoch / args.epochs)) - 1)  ## calculate beta
             disc_loss_v += disc_loss.item()
             cls_loss_v += cls_loss.item()
 
@@ -217,35 +245,69 @@ def main():
         # Add validation loop
         model.eval()
         val_correct = 0.
-        with torch.no_grad():
-            for inputs, labels in val_loader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                preds = model(inputs)
-                preds = torch.max(preds, 1)[1]
-                val_correct += torch.sum(preds == labels.data)
-            val_acc = val_correct.double() / len(val_loader.dataset)
-            print(f"Validation Accuracy: {val_acc:.4f}")
+        train_correct = 0
 
-        ## evaluation the acc for target domain
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    checkpoint_path = f"{checkpoint_dir}/epoch_{epoch:02d}_valacc_{val_acc:.4f}.pth"
-    torch.save({
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'disc_model_state_dict': disc_model.state_dict(),
-        'optimizer': optimizer.state_dict(),
-        'validation_accuracy': val_acc,
-        'mean_disc_loss': mean_disc_loss,
-        'mean_cls_loss': mean_cls_loss
-    }, checkpoint_path)
-    print(f"Checkpoint saved at {checkpoint_path}")
 
-    # Save feature representations for debugging (NEW)
+        # Training acc
+        # move left (Shift + Tab)
+        for inputs, labels in train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            preds = model(inputs)
+            # preds is tuple:
+            if isinstance(preds, tuple):
+                preds = preds[0]
+            preds = torch.max(preds, 1)[1]
+            train_correct += torch.sum(preds == labels.data)
+        train_acc = train_correct.double() / len(train_loader.dataset)
+        print(f"Train Accuracy: {train_acc:.4f}")
+
+        # Val acc
+        for inputs, labels in val_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            preds = model(inputs)
+            # preds is tuple:
+            if isinstance(preds, tuple):
+                preds = preds[0]
+            #print(f"Inputs shape: {inputs.shape}") # check code
+            #print(f"Model output shape: {preds.shape}") # check code
+            preds = torch.max(preds, 1)[1]
+            #print(f"Predictions: {preds}")
+            val_correct += torch.sum(preds == labels.data)
+        val_acc = val_correct.double() / len(val_loader.dataset)
+        print(f"Saved best model at epoch {epoch} with validation accuracy {val_acc:.4f}")
+
+
+    if val_acc > best_val_acc:
+        best_val_acc = val_acc
+        best_checkpoint_path = f"{checkpoint_dir}/best_model_lr_{args.lr}_{args.epochs}.pth"
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),  # Saves weights (parameters) of main model
+            'disc_model_state_dict': disc_model.state_dict(),  # Saves the weight (parameters) of discriminator model
+            'optimizer': optimizer.state_dict(), # Saves the optimizer's state include info of lr, momentum, and other parameters
+            'validation_accuracy': best_val_acc,
+            'mean_disc_loss': mean_disc_loss,
+            'mean_cls_loss': mean_cls_loss
+        }, best_checkpoint_path)
+
+        #save embeddings for best val acc
+        best_feature_save_path = f"{checkpoint_dir}/best_features_lr_{args.lr}.npz"
+        features_est = np.concatenate([
+            source_feature.detach().cpu().numpy(),
+            target_feature.detach().cpu().numpy()
+        ], axis=0)
+        np.savez(best_feature_save_path, features=features_est)
+
+    # Save feature representations for debugging
     feature_save_path = f"{checkpoint_dir}/features_epoch_{epoch:02d}.npz"
-    features_est = np.concatenate([source_feature.detach().cpu().numpy(),
-                                   target_feature.detach().cpu().numpy()], axis=0)
+    print(f"Source feature shape: {source_feature.shape}") #check code
+    print(f"Target feature shape: {target_feature.shape}") #check code
+    features_est = np.concatenate([
+        source_feature.detach().cpu().numpy(),
+        target_feature.detach().cpu().numpy()
+    ], axis=0)
     np.savez(feature_save_path, features=features_est)
-    print(f"Features saved at {feature_save_path}")
+
 
 
 if __name__ == '__main__':
